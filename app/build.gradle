@@ -183,7 +183,8 @@ def downloadBootstrap(String arch, String expectedChecksum, String version) {
     }
 
     // Custom bootstrap URL - set BOOTSTRAP_REPO_URL env var to use custom bootstrap
-    def bootstrapRepoUrl = System.getenv("BOOTSTRAP_REPO_URL") ?: "https://github.com/mithun50/termux-packages/releases/download"
+    // Default: official termux packages (until custom bootstrap is built)
+    def bootstrapRepoUrl = System.getenv("BOOTSTRAP_REPO_URL") ?: "https://github.com/termux/termux-packages/releases/download"
     def remoteUrl = bootstrapRepoUrl + "/bootstrap-" + version + "/bootstrap-" + arch + ".zip"
     logger.quiet("Downloading " + remoteUrl + " ...")
 
