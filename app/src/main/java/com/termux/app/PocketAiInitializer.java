@@ -17,8 +17,9 @@ import java.nio.charset.StandardCharsets;
  *
  * This class:
  * - Detects first run using SharedPreferences
- * - Creates ~/.termux/boot/start.sh on first launch only
- * - Does NOT install packages (handled by start.sh on boot)
+ * - Creates ~/.pocketai_setup.sh that runs automatically on first terminal open
+ * - Adds entry to .bashrc to trigger setup (self-removing after first run)
+ * - Creates ~/.termux/boot/start.sh for auto-start on device boot (with Termux:Boot)
  * - Play-policy safe: requires user to open app once
  */
 public final class PocketAiInitializer {
@@ -33,6 +34,9 @@ public final class PocketAiInitializer {
     // File paths (using TermuxConstants)
     private static final String BOOT_DIR_PATH = TermuxConstants.TERMUX_BOOT_SCRIPTS_DIR_PATH;
     private static final String START_SCRIPT_PATH = BOOT_DIR_PATH + "/start.sh";
+    private static final String HOME_DIR_PATH = TermuxConstants.TERMUX_HOME_DIR_PATH;
+    private static final String SETUP_SCRIPT_PATH = HOME_DIR_PATH + "/.pocketai_setup.sh";
+    private static final String BASHRC_PATH = HOME_DIR_PATH + "/.bashrc";
 
     private PocketAiInitializer() {
         // Static utility class
@@ -79,9 +83,21 @@ public final class PocketAiInitializer {
             Logger.logDebug(LOG_TAG, "Created boot directory: " + BOOT_DIR_PATH);
         }
 
-        // Create start.sh script
+        // Create start.sh script (for Termux:Boot auto-start)
         if (!createStartScript()) {
             Logger.logError(LOG_TAG, "Failed to create start script");
+            return false;
+        }
+
+        // Create setup script in home directory
+        if (!createSetupScript()) {
+            Logger.logError(LOG_TAG, "Failed to create setup script");
+            return false;
+        }
+
+        // Add auto-run to .bashrc so setup runs when terminal opens
+        if (!addBashrcEntry()) {
+            Logger.logError(LOG_TAG, "Failed to add bashrc entry");
             return false;
         }
 
@@ -90,6 +106,113 @@ public final class PocketAiInitializer {
         Logger.logInfo(LOG_TAG, "PocketAI initialized successfully");
 
         return true;
+    }
+
+    /**
+     * Creates the setup script in home directory.
+     * This script runs on first terminal open.
+     */
+    private static boolean createSetupScript() {
+        String scriptContent = getSetupScriptContent();
+        File scriptFile = new File(SETUP_SCRIPT_PATH);
+
+        try {
+            try (FileOutputStream fos = new FileOutputStream(scriptFile);
+                 OutputStreamWriter writer = new OutputStreamWriter(fos, StandardCharsets.UTF_8)) {
+                writer.write(scriptContent);
+            }
+
+            if (!scriptFile.setExecutable(true, false)) {
+                Logger.logWarn(LOG_TAG, "setExecutable() returned false for setup script");
+            }
+
+            Logger.logInfo(LOG_TAG, "Created setup script: " + SETUP_SCRIPT_PATH);
+            return true;
+
+        } catch (IOException e) {
+            Logger.logStackTraceWithMessage(LOG_TAG, "Failed to write setup script", e);
+            return false;
+        }
+    }
+
+    /**
+     * Adds entry to .bashrc to auto-run setup on first terminal open.
+     */
+    private static boolean addBashrcEntry() {
+        String bashrcEntry = "\n# PocketAI auto-setup (runs once on first open)\n" +
+                "if [ -f \"$HOME/.pocketai_setup.sh\" ]; then\n" +
+                "    bash \"$HOME/.pocketai_setup.sh\"\n" +
+                "fi\n";
+
+        File bashrcFile = new File(BASHRC_PATH);
+
+        try {
+            // Append to .bashrc (create if doesn't exist)
+            try (FileOutputStream fos = new FileOutputStream(bashrcFile, true);
+                 OutputStreamWriter writer = new OutputStreamWriter(fos, StandardCharsets.UTF_8)) {
+                writer.write(bashrcEntry);
+            }
+
+            Logger.logInfo(LOG_TAG, "Added auto-setup entry to .bashrc");
+            return true;
+
+        } catch (IOException e) {
+            Logger.logStackTraceWithMessage(LOG_TAG, "Failed to update .bashrc", e);
+            return false;
+        }
+    }
+
+    /**
+     * Returns content of setup script that runs on first terminal open.
+     */
+    private static String getSetupScriptContent() {
+        return "#!/data/data/com.nx.pai/files/usr/bin/bash\n" +
+               "# PocketAI First-Run Setup Script\n" +
+               "# This script runs automatically on first terminal open\n" +
+               "\n" +
+               "echo \"\"\n" +
+               "echo \"========================================\"\n" +
+               "echo \"   PocketAI - First Time Setup\"\n" +
+               "echo \"========================================\"\n" +
+               "echo \"\"\n" +
+               "\n" +
+               "# Remove this script after running (one-time setup)\n" +
+               "rm -f \"$HOME/.pocketai_setup.sh\"\n" +
+               "\n" +
+               "# Remove the bashrc entry\n" +
+               "sed -i '/pocketai_setup/d' \"$HOME/.bashrc\" 2>/dev/null\n" +
+               "sed -i '/PocketAI auto-setup/d' \"$HOME/.bashrc\" 2>/dev/null\n" +
+               "\n" +
+               "echo \"[1/4] Updating package lists...\"\n" +
+               "pkg update -y || { echo \"ERROR: pkg update failed\"; exit 1; }\n" +
+               "\n" +
+               "echo \"\"\n" +
+               "echo \"[2/4] Installing dependencies (git, curl, proot-distro, tmux)...\"\n" +
+               "pkg install -y git curl proot-distro tmux || { echo \"ERROR: Package installation failed\"; exit 1; }\n" +
+               "\n" +
+               "echo \"\"\n" +
+               "echo \"[3/4] Cloning PocketAI repository...\"\n" +
+               "if [ -d \"$HOME/PocketAi\" ]; then\n" +
+               "    echo \"PocketAI directory exists, pulling latest...\"\n" +
+               "    cd \"$HOME/PocketAi\" && git pull\n" +
+               "else\n" +
+               "    git clone https://github.com/mithun50/PocketAi.git \"$HOME/PocketAi\" || { echo \"ERROR: git clone failed\"; exit 1; }\n" +
+               "fi\n" +
+               "\n" +
+               "echo \"\"\n" +
+               "echo \"[4/4] Running PocketAI setup...\"\n" +
+               "cd \"$HOME/PocketAi\"\n" +
+               "chmod +x setup.sh\n" +
+               "./setup.sh || { echo \"ERROR: setup.sh failed\"; exit 1; }\n" +
+               "\n" +
+               "echo \"\"\n" +
+               "echo \"========================================\"\n" +
+               "echo \"   PocketAI Setup Complete!\"\n" +
+               "echo \"========================================\"\n" +
+               "echo \"\"\n" +
+               "echo \"To start the server, run:\"\n" +
+               "echo \"  cd ~/PocketAi && pai api web\"\n" +
+               "echo \"\"\n";
     }
 
     /**
