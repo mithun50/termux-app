@@ -38,7 +38,7 @@ android {
     }
 
     defaultConfig {
-        applicationId "com.termux"
+        applicationId "com.nexgenx.poketai"
         minSdkVersion project.properties.minSdkVersion.toInteger()
         targetSdkVersion project.properties.targetSdkVersion.toInteger()
         versionCode 118
@@ -49,14 +49,14 @@ android {
 
         buildConfigField "String", "TERMUX_PACKAGE_VARIANT", "\"" + project.ext.packageVariant + "\"" // Used by TermuxApplication class
 
-        manifestPlaceholders.TERMUX_PACKAGE_NAME = "com.termux"
-        manifestPlaceholders.TERMUX_APP_NAME = "Termux"
-        manifestPlaceholders.TERMUX_API_APP_NAME = "Termux:API"
-        manifestPlaceholders.TERMUX_BOOT_APP_NAME = "Termux:Boot"
-        manifestPlaceholders.TERMUX_FLOAT_APP_NAME = "Termux:Float"
-        manifestPlaceholders.TERMUX_STYLING_APP_NAME = "Termux:Styling"
-        manifestPlaceholders.TERMUX_TASKER_APP_NAME = "Termux:Tasker"
-        manifestPlaceholders.TERMUX_WIDGET_APP_NAME = "Termux:Widget"
+        manifestPlaceholders.TERMUX_PACKAGE_NAME = "com.nexgenx.poketai"
+        manifestPlaceholders.TERMUX_APP_NAME = "PocketAI"
+        manifestPlaceholders.TERMUX_API_APP_NAME = "PocketAI:API"
+        manifestPlaceholders.TERMUX_BOOT_APP_NAME = "PocketAI:Boot"
+        manifestPlaceholders.TERMUX_FLOAT_APP_NAME = "PocketAI:Float"
+        manifestPlaceholders.TERMUX_STYLING_APP_NAME = "PocketAI:Styling"
+        manifestPlaceholders.TERMUX_TASKER_APP_NAME = "PocketAI:Tasker"
+        manifestPlaceholders.TERMUX_WIDGET_APP_NAME = "PocketAI:Widget"
 
         externalNativeBuild {
             ndkBuild {
@@ -182,7 +182,9 @@ def downloadBootstrap(String arch, String expectedChecksum, String version) {
         }
     }
 
-    def remoteUrl = "https://github.com/termux/termux-packages/releases/download/bootstrap-" + version + "/bootstrap-" + arch + ".zip"
+    // Custom bootstrap URL - set BOOTSTRAP_REPO_URL env var to use custom bootstrap
+    def bootstrapRepoUrl = System.getenv("BOOTSTRAP_REPO_URL") ?: "https://github.com/mithun50/termux-packages/releases/download"
+    def remoteUrl = bootstrapRepoUrl + "/bootstrap-" + version + "/bootstrap-" + arch + ".zip"
     logger.quiet("Downloading " + remoteUrl + " ...")
 
     file.parentFile.mkdirs()
