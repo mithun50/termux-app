@@ -218,6 +218,12 @@ final class TermuxInstaller {
 
                     Logger.logInfo(LOG_TAG, "Bootstrap packages installed successfully.");
 
+                    // Patch bootstrap files to use correct package paths
+                    // This is needed when using official Termux bootstrap with a different package name
+                    if (!BootstrapPatcher.patchBootstrap(activity)) {
+                        Logger.logWarn(LOG_TAG, "Bootstrap patching had some failures, but continuing...");
+                    }
+
                     // Recreate env file since termux prefix was wiped earlier
                     TermuxShellEnvironment.writeEnvironmentToFile(activity);
 
