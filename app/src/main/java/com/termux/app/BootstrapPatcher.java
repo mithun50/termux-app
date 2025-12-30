@@ -21,7 +21,7 @@ import java.util.List;
  *
  * This is needed when using official Termux bootstrap with a different package name.
  * The official bootstrap has /data/data/com.termux hardcoded, but our app uses
- * a different package name (com.nexgenx.poketai).
+ * a different package name (com.nx.pai).
  */
 public final class BootstrapPatcher {
 
