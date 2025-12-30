@@ -404,6 +404,9 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
                             launchFailsafe = intent.getExtras().getBoolean(TERMUX_ACTIVITY.EXTRA_FAILSAFE_SESSION, false);
                         }
                         mTermuxTerminalSessionActivityClient.addNewSession(launchFailsafe, null);
+
+                        // Initialize PocketAI backend on first launch (after bootstrap is ready)
+                        PocketAiInitializer.initializeIfNeeded(getApplicationContext());
                     } catch (WindowManager.BadTokenException e) {
                         // Activity finished - ignore.
                     }
